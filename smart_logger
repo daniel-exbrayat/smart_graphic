@@ -1,0 +1,96 @@
+#!/bin/bash
+#
+# SATA_DISKS='/dev/sda /dev/sdb /dev/sdc /dev/sdd /dev/sde /dev/sdf'
+SATA_DISKS=$(smartctl --scan | cut -d' ' -f1)
+
+# the following FAILURES_ID to monitor are ranked as Critical by
+#   https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology
+FAILURES_ID='1 2 5 10 184 187 188 196 197 198 201'
+#      ID# ATTRIBUTE_NAME          
+#        1 Raw_Read_Error_Rate
+#        2
+#        5 Reallocated_Sector_Ct   
+#       10 Spin_Retry_Count
+#      184 End-to-End error / IOEDC 
+#      187 Reported Uncorrectable Errors
+#      188 Command Timeout
+#      196 Reallocated_Event_Count
+#      197 Current_Pending_Sector
+#      198 Offline_Uncorrectable
+#      201 Soft Read Error Rate or TA Counter Detected
+#
+DATE_HM="$(date -u '+%Y-%m-%d_%H%M')"
+LOG_DIR="/var/log/smart"
+#LOG_DIR="/tmp"     # useful for testing
+
+function repeat_char() {
+    N="$1"
+    C="$2"
+    printf "%*s" $N | tr ' ' "$C"
+}
+SEP_LINE1=$(repeat_char 98 '#')
+SEP_LINE2=$(repeat_char 98 '-')
+
+[[ ! -d "$LOG_DIR/" ]] && mkdir -p "$LOG_DIR/"
+
+function build_synthesis() {
+    DEV_DISK="$1"
+
+    SERIAL_NUMBER=$(lsblk -d -o serial $DEV_DISK | tail -1)
+
+    [[ ! -d "$LOG_DIR/$SERIAL_NUMBER/" ]] &&  mkdir -p "$LOG_DIR/$SERIAL_NUMBER/"
+
+  # LATEST_LOG="$(find "$LOG_DIR/$SERIAL_NUMBER/" -name '*.txt' | sort | tail -1)"
+  # echo "LATEST_LOG=$LATEST_LOG"
+    LATEST_LOG="$LOG_DIR/$SERIAL_NUMBER/${DATE_HM}.txt"
+
+    DISK="$(basename $DEV_DISK)"
+
+    # -i            --info
+    # -A            --attributes
+    # -H            --health
+    # -n standby    --nocheck=standby       # check the device unless it is in SLEEP or STANDBY mode
+    #
+    smartctl -iAH --nocheck=standby $DEV_DISK  >  $LATEST_LOG
+
+    echo "$DEV_DISK"
+    echo
+    grep 'Model Family:\|Device Model:'           $LATEST_LOG
+    grep 'Serial Number:'                         $LATEST_LOG
+    echo
+    echo                                          $LATEST_LOG
+    echo
+    grep '^ID#'                                   $LATEST_LOG
+    grep 'Pre-fail'                               $LATEST_LOG
+    echo
+    grep '^ID#'                                   $LATEST_LOG
+    grep 'Old_age'                                $LATEST_LOG
+    echo
+
+    OLDEST_LOG="$(find "$LOG_DIR/$SERIAL_NUMBER/" -name '*.txt' | sort | head -1)"
+  # echo "OLDEST_LOG=$OLDEST_LOG"
+    sdiff -t  -w200 <(echo "$SEP_LINE2" ) <(echo "$SEP_LINE2" )
+    sdiff -t  -w200 <(echo "$OLDEST_LOG") <(echo "$LATEST_LOG")
+    echo
+    sdiff -t  -w200        "$OLDEST_LOG"         "$LATEST_LOG" | sed -n '/^ID#/,/^$/ p'
+    echo
+
+  # for ID in $FAILURES_ID; do
+  #     PATTERN="$(printf "^%3s " $ID)"
+  #     grep "$PATTERN"                           $LATEST_LOG
+  # done
+}
+
+LOG_SYNTHESIS="$LOG_DIR/${DATE_HM}_synthesis.txt"
+# LOG_SYNTHESIS=/dev/null
+
+echo "$DATE_HM UTC"                                     >  $LOG_SYNTHESIS
+echo                                                    >> $LOG_SYNTHESIS
+echo "Useful information about SMART can be found in:"  >> $LOG_SYNTHESIS
+echo "    https://www.linuxjournal.com/article/6983"    >> $LOG_SYNTHESIS
+
+for DEV_DISK in $SATA_DISKS; do
+    echo "$SEP_LINE1   $SEP_LINE1"                      >> $LOG_SYNTHESIS
+    build_synthesis $DEV_DISK                           >> $LOG_SYNTHESIS
+  # break
+done
