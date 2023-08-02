@@ -1,24 +1,41 @@
 #!/bin/bash
 #
-# SATA_DISKS='/dev/sda /dev/sdb /dev/sdc /dev/sdd /dev/sde /dev/sdf'
+# This shell script shall be run periodically, daily, or no less than once a week.
+# Typically it can be installed in /etc/cron.daily/
+#
+#     -rwxr-xr-x 1 root root 3484 août   2 10:55 /etc/cron.daily/smart_logger
+#
+# It runs the following command for each disk to be monitored.
+#
+#     # -i            --info            # Prints some useful information
+#     # -A            --attributes      # Prints only the vendor specific SMART Attributes
+#     # -H            --health          # Prints the health status of the device
+#     # -n standby    --nocheck=standby # check the device unless it is in SLEEP or STANDBY mode
+#     #
+#     smartctl -iAH --nocheck=standby $DEV_DISK  >  $LATEST_LOG
+#
+# Doing so, it grabs disks SMART data then store them under the following respository:
+#     /var/log/smart/<disk_Serial_Number>/
+#
+# Example is shown here below:
+#     /var/log/smart/SN_disk#1/
+#         ├── 2023-05-24_2217.txt
+#         ├── 2023-05-24_2317.txt
+#         ├── 2023-05-25_0017.txt
+#         ├── 2023-05-25_0917.txt
+#         ├── 2023-05-25_1017.txt
+#         ├── 2023-05-25_1117.txt
+#         ├── 2023-05-25_1217.txt
+#         ├── ...
+#
+#     /var/log/smart/SN_disk#2/
+#         ├── 2023-05-24_2217.txt
+#         ├── 2023-05-24_2317.txt
+#         ├── 2023-05-25_0017.txt
+#         ├── ...
+
 SATA_DISKS=$(smartctl --scan | cut -d' ' -f1)
 
-# the following FAILURES_ID to monitor are ranked as Critical by
-#   https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology
-FAILURES_ID='1 2 5 10 184 187 188 196 197 198 201'
-#      ID# ATTRIBUTE_NAME          
-#        1 Raw_Read_Error_Rate
-#        2
-#        5 Reallocated_Sector_Ct   
-#       10 Spin_Retry_Count
-#      184 End-to-End error / IOEDC 
-#      187 Reported Uncorrectable Errors
-#      188 Command Timeout
-#      196 Reallocated_Event_Count
-#      197 Current_Pending_Sector
-#      198 Offline_Uncorrectable
-#      201 Soft Read Error Rate or TA Counter Detected
-#
 DATE_HM="$(date -u '+%Y-%m-%d_%H%M')"
 LOG_DIR="/var/log/smart"
 #LOG_DIR="/tmp"     # useful for testing
@@ -46,12 +63,17 @@ function build_synthesis() {
 
     DISK="$(basename $DEV_DISK)"
 
-    # -i            --info
-    # -A            --attributes
-    # -H            --health
-    # -n standby    --nocheck=standby       # check the device unless it is in SLEEP or STANDBY mode
+    # -i            --info            # Prints some useful information
+    # -A            --attributes      # Prints only the vendor specific SMART Attributes
+    # -H            --health          # Prints the health status of the device
+    # -n standby    --nocheck=standby # check the device unless it is in SLEEP or STANDBY mode
     #
     smartctl -iAH --nocheck=standby $DEV_DISK  >  $LATEST_LOG
+    [[ $? -ne 0 ]] && {
+        # next line so that root receives an email
+        cat                                       $LATEST_LOG > /dev/stderr
+        rm                                        $LATEST_LOG 
+    }
 
     echo "$DEV_DISK"
     echo
@@ -69,12 +91,30 @@ function build_synthesis() {
 
     OLDEST_LOG="$(find "$LOG_DIR/$SERIAL_NUMBER/" -name '*.txt' | sort | head -1)"
   # echo "OLDEST_LOG=$OLDEST_LOG"
+
     sdiff -t  -w200 <(echo "$SEP_LINE2" ) <(echo "$SEP_LINE2" )
     sdiff -t  -w200 <(echo "$OLDEST_LOG") <(echo "$LATEST_LOG")
     echo
     sdiff -t  -w200        "$OLDEST_LOG"         "$LATEST_LOG" | sed -n '/^ID#/,/^$/ p'
     echo
 
+  # the following FAILURES_ID to monitor are ranked as Critical by
+  #   https://en.wikipedia.org/wiki/Self-Monitoring,_Analysis_and_Reporting_Technology
+  #      ID# ATTRIBUTE_NAME          
+  #        1 Raw_Read_Error_Rate
+  #        2
+  #        5 Reallocated_Sector_Ct   
+  #       10 Spin_Retry_Count
+  #      184 End-to-End error / IOEDC 
+  #      187 Reported Uncorrectable Errors
+  #      188 Command Timeout
+  #      196 Reallocated_Event_Count
+  #      197 Current_Pending_Sector
+  #      198 Offline_Uncorrectable
+  #      201 Soft Read Error Rate or TA Counter Detected
+  #
+  # FAILURES_ID='1 2 5 10 184 187 188 196 197 198 201'
+  #
   # for ID in $FAILURES_ID; do
   #     PATTERN="$(printf "^%3s " $ID)"
   #     grep "$PATTERN"                           $LATEST_LOG

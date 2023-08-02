@@ -1,3 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+""" graphically displays S.M.A.R.T. data that has been periodically collected over time.
+
+The graph visually represents the S.M.A.R.T. data that has been collected at regular
+intervals over a specific period of time. S.M.A.R.T. stands for:
+    Self-Monitoring, Analysis, and Reporting Technology
+
+Today, most of Hard drives and SSDs support S.M.A.R.T. technolgy, to gauge their own
+reliability and determine if they're failing. You can view your hard drive's S.M.A.R.T.
+data and see if it has started to develop symptoms.
+
+One way to graphically display SMART data collected over time is through line graphs.
+Each data point can be plotted on the y-axis, while the x-axis represents the times
+intervals at which the data were collected. This allows for a clear visualization of
+any trends or patterns in the SMART data. Additionally, different lines can be used to
+represent different SMART attributes, making it easier to compare and analyze the
+various aspects of the data. This graphical representation helps in monitoring the
+health and performance of a system or device and provides valuable insights for
+reporting and analysis purposes.
+
+    # -i            --info            # Prints some useful information
+    # -A            --attributes      # Prints only the vendor specific SMART Attributes
+    # -H            --health          # Prints the health status of the device
+    # -n standby    --nocheck=standby # check the device unless it is in SLEEP or STANDBY mode
+    #
+    smartctl -iAH --nocheck=standby /dev/sda
+
+In order to help for data collection, a buddy program called "smart_logger" can
+be installed in /etc/cron.daily/.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
+__author__     = "Daniel Exbrayat"
+__authors__    = 
+__contact__    = "daniel.exbrayat@laposte.net"
+__copyright__  = "Copyright 2023, personal"
+__credits__    = 
+__date__       = "2023/08/02"
+__deprecated__ = False
+__email__      = "daniel.exbrayat@laposte.net"
+__license__    = "GPLv3"
+__maintainer__ = "developer"
+__status__     = "Prototype"    # Development or Production
+__version__    = "0.0.1"
+
 import sys
 # import re
 import math
@@ -13,17 +70,23 @@ import matplotlib as mpl
 
 DATE_FORMAT = '%Y-%m-%d_%H:%M'
 
-def create_dict(existing_struct, name):
+def create_dict(existing_container, key):
     try:
-        existing_struct[name]
+        existing_container[key]
     except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_struct[name] = dict()
+        existing_container[key] = dict()
     
-def create_list(existing_struct, name):
+def create_list(existing_container, key):
     try:
-        existing_struct[name]
+        existing_container[key]
     except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_struct[name] = list()
+        existing_container[key] = list()
+    
+def create_set(existing_container, key):
+    try:
+        existing_container[key]
+    except (KeyError, IndexError) as e: # For dict, list|tuple
+        existing_container[key] = set()
     
 def seek_for_pattern(fp, pattern):
     try:

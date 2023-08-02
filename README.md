@@ -1,4 +1,4 @@
-Useful information about SMART can be found in https://www.linuxjournal.com/article/6983
+Useful information about S.M.A.R.T. can be found in https://www.linuxjournal.com/article/6983
 
 SMART_GRAPHIC it is a set of two tools:
     1) smart_logger:        for recording SMART data
@@ -6,12 +6,13 @@ SMART_GRAPHIC it is a set of two tools:
 
 
 smart_logger
-    This shell script shall be run periodically, daily, or no less than once a week
+    This shell script shall be run periodically, daily, or no less than once a week.
     Typically it can be installed in /etc/cron.daily/
 
         -rwxr-xr-x 1 root root 3484 août   2 10:55 /etc/cron.daily/smart_logger
 
-    It runs the following command
+    It runs the following command for each disk to be monitored.
+
         # -i            --info            # Prints some useful information
         # -A            --attributes      # Prints only the vendor specific SMART Attributes
         # -H            --health          # Prints the health status of the device
@@ -19,7 +20,9 @@ smart_logger
         #
         smartctl -iAH --nocheck=standby $DEV_DISK  >  $LATEST_LOG
 
-    Doing so, it grabs SMART data of all disks then store them in /var/log/smart/<disk_Serial_Number>/
+    Doing so, it grabs disks SMART data then store them under the following respository:
+        /var/log/smart/<disk_Serial_Number>/
+
     Example is shown here below:
         /var/log/smart/SN_disk#1/
             ├── 2023-05-24_2217.txt
@@ -72,5 +75,24 @@ smart_logger
 
 smart_graphic.py
     This python script can be manually run at any time.
+    It graphically displays S.M.A.R.T. data that has been periodically collected over time.
+
+    The graph visually represents the S.M.A.R.T. data that has been collected at regular
+    intervals over a specific period of time. S.M.A.R.T. stands for:
+        Self-Monitoring, Analysis, and Reporting Technology
+
     Arguments shall be the list (or partial) of recorded files
         python smart_graphic.py /var/log/smart/<disk_Serial_Number>/2023-*.txt
+
+    Today, most of Hard drives and SSDs support S.M.A.R.T. technolgy, to gauge their own
+    reliability and determine if they're failing. You can view your hard drive's S.M.A.R.T.
+    data and see if it has started to develop symptoms.
+
+    One way to graphically display SMART data collected over time is through line graphs.
+    Each data point can be plotted on the y-axis, while the x-axis represents the times
+    intervals at which the data were collected. This allows for a clear visualization of
+    any trends or patterns in the SMART data. Additionally, different lines can be used to
+    represent different SMART attributes, making it easier to compare and analyze the
+    various aspects of the data. This graphical representation helps in monitoring the
+    health and performance of a system or device and provides valuable insights for
+    reporting and analysis purposes.
