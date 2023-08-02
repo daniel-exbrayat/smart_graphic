@@ -11,6 +11,8 @@ import matplotlib as mpl
 
 # plt.rcParams['toolbar'] = 'None' # Remove tool bar (upper)
 
+DATE_FORMAT = '%Y-%m-%d_%H:%M'
+
 def create_dict(existing_struct, name):
     try:
         existing_struct[name]
@@ -29,8 +31,8 @@ def seek_for_pattern(fp, pattern):
             pass
 
     except StopIteration:
-        print('\tERROR: pattern not found: ', pattern)
-        print('\tERROR: file is ill formatted')
+        print('    ERROR: pattern not found: ', pattern)
+        print('    ERROR: file is ill formatted')
         fp.close()
         sys.exit()
 
@@ -106,17 +108,17 @@ def parse_START_OF_INFORMATION_SECTION(fp, smart_infos):
 
             # %c     locale's date and time (e.g., Thu Mar  3 23:05:25 2005)
 
-            Date = datetime.strptime(date_noTZ, '%c').strftime('%Y-%m-%d_%H:%M')
-            print('\tdate and time is: ', Date)
+            Date = datetime.strptime(date_noTZ, '%c').strftime(DATE_FORMAT)
+            print('    date and time is: ', Date)
 
             #### Third method
             # cmd  = 'LC_TIME="en_US.UTF-8"  date'
             # arg1 = '-d' + stripped_value
             # arg2 = '-u'
-            # arg3 = '+%Y-%m-%d_%H:%M'                   # '--rfc-3339=seconds'
+            # arg3 = '+' + DATE_FORMAT                 # '--rfc-3339=seconds'
             # result = subprocess.run([cmd, arg1, arg2, arg3], stdout=subprocess.PIPE)
             # Date = result.stdout.decode('utf-8').strip()
-            # print('\tUTC date and time is: ', Date)
+            # print('    UTC date and time is: ', Date)
 
             create_list(smart_infos[Serial_Number], 'date')
 
@@ -149,7 +151,7 @@ print(SMART_DATA_HEADERS)
 # 199 UDMA_CRC_Error_Count    0x003e   200   200   000    Old_age   Always       -       0
 # 200 Multi_Zone_Error_Rate   0x0000   100   253   000    Old_age   Offline      -       0
 # 202 Data_Address_Mark_Errs  0x0032   100   253   000    Old_age   Always       -       0
-pattern_for_slicing_SMART_DATA = \
+PATTERN_for_SLICING_SMART_DATA = \
  'xxx xxxxxxxxxxxxxxxxxxxxxxx xxxxxx   xxx   xxx   xxx    xxxxxxxxx xxxxxxxx xxxxxxxxxxx xxxxxxxxxxxxxx '
 #           1         2         3         4         5         6         7         8         9
 # 01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -165,7 +167,7 @@ def SMART_DATA_Slices(string):
         yield i,j
         i = j+1
 
-SMART_DATA_SLICES = [ij for ij in SMART_DATA_Slices(pattern_for_slicing_SMART_DATA)]
+SMART_DATA_SLICES = [ij for ij in SMART_DATA_Slices(PATTERN_for_SLICING_SMART_DATA)]
 
 def SMART_DATA_Headers_and_Values(line):
     for col_name,ij in zip(SMART_DATA_HEADERS, SMART_DATA_SLICES):
@@ -198,7 +200,7 @@ def parse_START_OF_READ_SMART_DATA_SECTION(fp, smart_data):
         # splitted_line = re.split(' +', line)
         # print(splitted_line)
 
-        # for i,j in SMART_DATA_Slices(pattern_for_slicing_SMART_DATA):
+        # for i,j in SMART_DATA_Slices(PATTERN_for_SLICING_SMART_DATA):
         #     # print(i,j)
         #     # print('<' + line[i:j] + '>', end=' ')
         for col_name, value in SMART_DATA_Headers_and_Values(line):
@@ -240,15 +242,19 @@ def plot_VALUE_WORST_THRESH_data(ax, date_data, smart_data, attribute_id):
     worst_data  = smart_data['WORST'    ][attribute_id]
     thresh_data = smart_data['THRESH'   ][attribute_id]
 
-    ax.set_ylim(0, 210)
+    ax.set_ylim(-10, 210)
     ax.grid()
 
     attribute_name = smart_data['ATTRIBUTE_NAME'][attribute_id]
     attribute_type = smart_data['TYPE'          ][attribute_id]
 
-    plot_title = f'ID# {attribute_id}: {attribute_name} ({attribute_type})'
+    plot_title = f'ID#{attribute_id}: {attribute_name} ({attribute_type})'
 
     ax.set_title(plot_title)
+
+    # set x-axis label and adjust its position
+    ax.set_xlabel('days before')
+    ax.xaxis.set_label_coords(1.05, -0.06)
 
     # blue, green, red, cyan, magenta, yellow, black, and white
     l1, = ax.plot(date_data, value_data, label='VALUE' , color='blue' , linestyle='solid')
@@ -262,8 +268,8 @@ def plot_VALUE_WORST_THRESH_data(ax, date_data, smart_data, attribute_id):
     return l1,l2,l3,l4
 
 def days_between(d1, d2):
-    d1 = datetime.strptime(d1, "%Y-%m-%d_%H:%M")
-    d2 = datetime.strptime(d2, "%Y-%m-%d_%H:%M")
+    d1 = datetime.strptime(d1, DATE_FORMAT)
+    d2 = datetime.strptime(d2, DATE_FORMAT)
 
     delta_seconds = (d2-d1).days*24*3600 + (d2 - d1).seconds
     delta_days = round(delta_seconds / (24*3600), 2)
@@ -273,11 +279,13 @@ def days_between(d1, d2):
 def plot_SMART_DATA(smart_infos, disk_SN):
     smart_data = smart_infos[disk_SN]
 
-    start_date = smart_data['date'][0]
-    print(start_date)
+    oldest_date = smart_data['date'][ 0]
+    latest_date = smart_data['date'][-1]
+    print(oldest_date, latest_date)
     day_axis = []
     for current_date in smart_data['date']:
-        delta_days = days_between(start_date, current_date)
+        # delta_days = days_between(oldest_date, current_date)
+        delta_days = days_between(latest_date, current_date)
         day_axis.append(delta_days)
 
     print(day_axis)
@@ -311,13 +319,15 @@ def plot_SMART_DATA(smart_infos, disk_SN):
         if (row,col == 0,0):
             fig.legend(ls, ('VALUE', 'WORST', 'THRESH', 'RAW_VALUE'), loc='upper left')
 
+    fig.delaxes(axs[1,1])
+
     fig.savefig(disk_SN + '.png', bbox_inches='tight', dpi=100)
     # plt.tight_layout()
     plt.show()
 
 def plot_SMART_INFOS(smart_infos):
     for disk_SN in smart_infos:
-        print(disk_SN)
+        print('disk Serial Number; ', disk_SN)
         plot_SMART_DATA(smart_infos, disk_SN)
 
 def main():

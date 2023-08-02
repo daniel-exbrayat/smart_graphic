@@ -1,23 +1,50 @@
-Useful information can be found in https://www.linuxjournal.com/article/6983
+Useful information about SMART can be found in https://www.linuxjournal.com/article/6983
 
 SMART_GRAPHIC it is a set of two tools:
-    1) smart_logger:        one for recording SMART data
-    2) smart_graphic.py:    one for graphically displaying these data
+    1) smart_logger:        for recording SMART data
+    2) smart_graphic.py:    for graphically displaying these SMART data
 
 
 smart_logger
     This shell script shall be run periodically, daily, or no less than once a week
     Typically it can be installed in /etc/cron.daily/
 
-    it grabs SMART data of all disks then store them in /var/log/smart/<disk_Serial_Number>/
+        -rwxr-xr-x 1 root root 3484 août   2 10:55 /etc/cron.daily/smart_logger
 
-    Here below is a typical recording content
+    It runs the following command
+        # -i            --info            # Prints some useful information
+        # -A            --attributes      # Prints only the vendor specific SMART Attributes
+        # -H            --health          # Prints the health status of the device
+        # -n standby    --nocheck=standby # check the device unless it is in SLEEP or STANDBY mode
+        #
+        smartctl -iAH --nocheck=standby $DEV_DISK  >  $LATEST_LOG
+
+    Doing so, it grabs SMART data of all disks then store them in /var/log/smart/<disk_Serial_Number>/
+    Example is shown here below:
+        /var/log/smart/SN_disk#1/
+            ├── 2023-05-24_2217.txt
+            ├── 2023-05-24_2317.txt
+            ├── 2023-05-25_0017.txt
+            ├── 2023-05-25_0917.txt
+            ├── 2023-05-25_1017.txt
+            ├── 2023-05-25_1117.txt
+            ├── 2023-05-25_1217.txt
+            ├── ...
+
+        /var/log/smart/SN_disk#2/
+            ├── 2023-05-24_2217.txt
+            ├── 2023-05-24_2317.txt
+            ├── 2023-05-25_0017.txt
+            ├── ...
+
+
+    Here below is a typical content of one of these files
         # === START OF INFORMATION SECTION ===
         # Model Family:     Western Digital Green
         # Device Model:     WDC WD20EZRX-00D8PB0
         # Serial Number:    WD-WCD9UN4TC4RH
         # ...
-        # Local Time is:    Sat Jul 29 11:19:39 2023 CEST
+        # Local Time is:    Sat May 05 11:17:39 2023 CEST
         # ...
 
         # === START OF READ SMART DATA SECTION ===
@@ -45,5 +72,5 @@ smart_logger
 
 smart_graphic.py
     This python script can be manually run at any time.
-    Arguments shall be the list of recorded files
+    Arguments shall be the list (or partial) of recorded files
         python smart_graphic.py /var/log/smart/<disk_Serial_Number>/2023-*.txt
