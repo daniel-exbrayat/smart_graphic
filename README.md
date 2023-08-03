@@ -19,7 +19,7 @@ This python script can be manually run at any time.
 It graphically displays SMART data that has been periodically collected at regular
 intervals over a specific period of time.
 
-![Example](2023-07-19_09:22_example.png)
+![Example](2023-07-19_0922_example.png)
 
 One way to graphically display SMART data collected over time is through line graphs.
 Each data point can be plotted on the y-axis, while the x-axis represents the times

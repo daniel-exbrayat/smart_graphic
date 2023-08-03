@@ -379,9 +379,9 @@ def plot_SMART_DATA(smart_infos, disk_SN):
             fig.legend(ls, ('VALUE', 'WORST', 'THRESH', 'RAW_VALUE'), loc='upper left')
 
     if __status__ == 'Production':
-        fig_filename = latest_date + '_' + disk_SN   + '.png'
+        fig_filename = latest_date.replace(':','') + '_' + disk_SN   + '.png'
     else:
-        fig_filename = latest_date + '_' + 'example' + '.png'
+        fig_filename = latest_date.replace(':','') + '_' + 'example' + '.png'
 
     fig.savefig(fig_filename, bbox_inches='tight', dpi=100)
     # plt.tight_layout()
