@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-""" graphically displays S.M.A.R.T. data that has been periodically collected over time.
+""" graphically displays S.M.A.R.T. data that have been periodically collected over time.
 
-The graph visually represents the S.M.A.R.T. data that has been collected at regular
+The graph visually represents the S.M.A.R.T. data that have been collected at regular
 intervals over a specific period of time. S.M.A.R.T. stands for:
     Self-Monitoring, Analysis, and Reporting Technology
 
@@ -43,16 +43,16 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
 __author__     = "Daniel Exbrayat"
-__authors__    = 
+__authors__    = ""
 __contact__    = "daniel.exbrayat@laposte.net"
 __copyright__  = "Copyright 2023, personal"
-__credits__    = 
+__credits__    = ""
 __date__       = "2023/08/02"
 __deprecated__ = False
 __email__      = "daniel.exbrayat@laposte.net"
 __license__    = "GPLv3"
 __maintainer__ = "developer"
-__status__     = "Prototype"    # Development or Production
+__status__     = "Prototype"    # ['Prototype', 'Development', 'Production']
 __version__    = "0.0.1"
 
 import sys
@@ -70,23 +70,17 @@ import matplotlib as mpl
 
 DATE_FORMAT = '%Y-%m-%d_%H:%M'
 
-def create_dict(existing_container, key):
+def create_dict(existing_ref, key):
     try:
-        existing_container[key]
+        existing_ref[key]
     except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_container[key] = dict()
+        existing_ref[key] = dict()
     
-def create_list(existing_container, key):
+def create_list(existing_ref, key):
     try:
-        existing_container[key]
+        existing_ref[key]
     except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_container[key] = list()
-    
-def create_set(existing_container, key):
-    try:
-        existing_container[key]
-    except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_container[key] = set()
+        existing_ref[key] = list()
     
 def seek_for_pattern(fp, pattern):
     try:
@@ -191,8 +185,9 @@ def parse_START_OF_INFORMATION_SECTION(fp, smart_infos):
 
 SMART_DATA_HEADERS_str = \
  'ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE'
+print(SMART_DATA_HEADERS_str)
 SMART_DATA_HEADERS = SMART_DATA_HEADERS_str.split()
-print(SMART_DATA_HEADERS)
+# print(SMART_DATA_HEADERS)
 # === START OF READ SMART DATA SECTION ===
 # 
 # ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
@@ -271,10 +266,10 @@ def parse_START_OF_READ_SMART_DATA_SECTION(fp, smart_data):
             # print(value, end=' ')
 
             #============================================================
-            create_list(smart_data, 'all columns')
-
-            if col_name not in smart_data['all columns']:
-                smart_data['all columns'].append(col_name)
+            # create_list(smart_data, 'all columns')
+            #
+            # if col_name not in smart_data['all columns']:
+            #     smart_data['all columns'].append(col_name)
             #============================================================
             if   col_name == 'ID#':
                 attribute_id = value
@@ -293,10 +288,10 @@ def parse_START_OF_READ_SMART_DATA_SECTION(fp, smart_data):
 
                 smart_data[col_name][attribute_id].append(int(value))
                 #========================================================
-                create_list(smart_data, 'picked columns')
-
-                if col_name not in smart_data['picked columns']:
-                    smart_data['picked columns'].append(col_name)
+                # create_list(smart_data, 'picked columns')
+                #
+                # if col_name not in smart_data['picked columns']:
+                #     smart_data['picked columns'].append(col_name)
             #============================================================
         # print()
 
@@ -344,7 +339,8 @@ def plot_SMART_DATA(smart_infos, disk_SN):
 
     oldest_date = smart_data['date'][ 0]
     latest_date = smart_data['date'][-1]
-    print(oldest_date, latest_date)
+    print('oldest_date: ', oldest_date)
+    print('latest_date: ', latest_date)
     day_axis = []
     for current_date in smart_data['date']:
         # delta_days = days_between(oldest_date, current_date)
@@ -382,15 +378,18 @@ def plot_SMART_DATA(smart_infos, disk_SN):
         if (row,col == 0,0):
             fig.legend(ls, ('VALUE', 'WORST', 'THRESH', 'RAW_VALUE'), loc='upper left')
 
-    fig.delaxes(axs[1,1])
+    if __status__ == 'Production':
+        fig_filename = latest_date.replace(':','') + '_' + disk_SN   + '.png'
+    else:
+        fig_filename = latest_date.replace(':','') + '_' + 'example' + '.png'
 
-    fig.savefig(disk_SN + '.png', bbox_inches='tight', dpi=100)
+    fig.savefig(fig_filename, bbox_inches='tight', dpi=100)
     # plt.tight_layout()
     plt.show()
 
 def plot_SMART_INFOS(smart_infos):
     for disk_SN in smart_infos:
-        print('disk Serial Number; ', disk_SN)
+        print('disk Serial Number: ', disk_SN)
         plot_SMART_DATA(smart_infos, disk_SN)
 
 def main():
