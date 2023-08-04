@@ -1,0 +1,24 @@
+Begin4
+Title:          smart_graphic
+Version:        Prototype
+Entered-date:   2023-08-04
+Description:    Graphically displays S.M.A.R.T attributes
+Keywords:       smart graphic disk hdd
+Author:         daniel.exbrayat@laposte.net (Daniel Exbrayat)
+Maintained-by:  daniel.exbrayat@laposte.net (Daniel Exbrayat)
+Primary-site:   https://github.com/daniel-exbrayat/smart_graphic
+Alternate-site: 
+Original-site:
+Platforms:      Linux
+                GNU bash, version 5.1.16(1)-release (x86_64-pc-linux-gnu)
+
+                smartmontools 7.2
+
+                python 3.10.12
+                    numpy==1.21.5
+                    matplotlib==3.5.1
+
+                tested on: Ubuntu 22.04.2 LTS
+
+Copying-policy:	GPL 3.0 or higher
+End

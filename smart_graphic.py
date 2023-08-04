@@ -1,3 +1,60 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+""" graphically displays S.M.A.R.T. data that have been periodically collected over time.
+
+The graph visually represents the S.M.A.R.T. data that have been collected at regular
+intervals over a specific period of time. S.M.A.R.T. stands for:
+    Self-Monitoring, Analysis, and Reporting Technology
+
+Today, most of Hard drives and SSDs support S.M.A.R.T. technolgy, to gauge their own
+reliability and determine if they're failing. You can view your hard drive's S.M.A.R.T.
+data and see if it has started to develop symptoms.
+
+One way to graphically display SMART data collected over time is through line graphs.
+Each data point can be plotted on the y-axis, while the x-axis represents the times
+intervals at which the data were collected. This allows for a clear visualization of
+any trends or patterns in the SMART data. Additionally, different lines can be used to
+represent different SMART attributes, making it easier to compare and analyze the
+various aspects of the data. This graphical representation helps in monitoring the
+health and performance of a system or device and provides valuable insights for
+reporting and analysis purposes.
+
+    # -i            --info            # Prints some useful information
+    # -A            --attributes      # Prints only the vendor specific SMART Attributes
+    # -H            --health          # Prints the health status of the device
+    # -n standby    --nocheck=standby # check the device unless it is in SLEEP or STANDBY mode
+    #
+    smartctl -iAH --nocheck=standby /dev/sda
+
+In order to help for data collection, a buddy program called "smart_logger" can
+be installed in /etc/cron.daily/.
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with
+this program. If not, see <http://www.gnu.org/licenses/>.
+"""
+
+__author__     = "Daniel Exbrayat"
+__authors__    = []
+__contact__    = "daniel.exbrayat@laposte.net"
+__copyright__  = "Copyright 2023, personal"
+__credits__    = []
+__date__       = "2023/08/02"
+__deprecated__ = False
+__email__      = "daniel.exbrayat@laposte.net"
+__license__    = "GPLv3"
+__maintainer__ = "developer"
+__status__     = "Prototype"    # ['Prototype', 'Development', 'Production']
+__version__    = "0.0.1"
+
 import sys
 # import re
 import math
@@ -11,17 +68,19 @@ import matplotlib as mpl
 
 # plt.rcParams['toolbar'] = 'None' # Remove tool bar (upper)
 
-def create_dict(existing_struct, name):
+DATE_FORMAT = '%Y-%m-%d_%H%M'
+
+def create_dict(existing_ref, key):
     try:
-        existing_struct[name]
+        existing_ref[key]
     except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_struct[name] = dict()
+        existing_ref[key] = dict()
     
-def create_list(existing_struct, name):
+def create_list(existing_ref, key):
     try:
-        existing_struct[name]
+        existing_ref[key]
     except (KeyError, IndexError) as e: # For dict, list|tuple
-        existing_struct[name] = list()
+        existing_ref[key] = list()
     
 def seek_for_pattern(fp, pattern):
     try:
@@ -29,8 +88,8 @@ def seek_for_pattern(fp, pattern):
             pass
 
     except StopIteration:
-        print('\tERROR: pattern not found: ', pattern)
-        print('\tERROR: file is ill formatted')
+        print('    ERROR: pattern not found: ', pattern)
+        print('    ERROR: file is ill formatted')
         fp.close()
         sys.exit()
 
@@ -106,17 +165,17 @@ def parse_START_OF_INFORMATION_SECTION(fp, smart_infos):
 
             # %c     locale's date and time (e.g., Thu Mar  3 23:05:25 2005)
 
-            Date = datetime.strptime(date_noTZ, '%c').strftime('%Y-%m-%d_%H:%M')
-            print('\tdate and time is: ', Date)
+            Date = datetime.strptime(date_noTZ, '%c').strftime(DATE_FORMAT)
+            print('    date and time is: ', Date)
 
             #### Third method
             # cmd  = 'LC_TIME="en_US.UTF-8"  date'
             # arg1 = '-d' + stripped_value
             # arg2 = '-u'
-            # arg3 = '+%Y-%m-%d_%H:%M'                   # '--rfc-3339=seconds'
+            # arg3 = '+' + DATE_FORMAT                 # '--rfc-3339=seconds'
             # result = subprocess.run([cmd, arg1, arg2, arg3], stdout=subprocess.PIPE)
             # Date = result.stdout.decode('utf-8').strip()
-            # print('\tUTC date and time is: ', Date)
+            # print('    UTC date and time is: ', Date)
 
             create_list(smart_infos[Serial_Number], 'date')
 
@@ -126,8 +185,9 @@ def parse_START_OF_INFORMATION_SECTION(fp, smart_infos):
 
 SMART_DATA_HEADERS_str = \
  'ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE'
+print(SMART_DATA_HEADERS_str)
 SMART_DATA_HEADERS = SMART_DATA_HEADERS_str.split()
-print(SMART_DATA_HEADERS)
+# print(SMART_DATA_HEADERS)
 # === START OF READ SMART DATA SECTION ===
 # 
 # ID# ATTRIBUTE_NAME          FLAG     VALUE WORST THRESH TYPE      UPDATED  WHEN_FAILED RAW_VALUE
@@ -149,7 +209,7 @@ print(SMART_DATA_HEADERS)
 # 199 UDMA_CRC_Error_Count    0x003e   200   200   000    Old_age   Always       -       0
 # 200 Multi_Zone_Error_Rate   0x0000   100   253   000    Old_age   Offline      -       0
 # 202 Data_Address_Mark_Errs  0x0032   100   253   000    Old_age   Always       -       0
-pattern_for_slicing_SMART_DATA = \
+PATTERN_for_SLICING_SMART_DATA = \
  'xxx xxxxxxxxxxxxxxxxxxxxxxx xxxxxx   xxx   xxx   xxx    xxxxxxxxx xxxxxxxx xxxxxxxxxxx xxxxxxxxxxxxxx '
 #           1         2         3         4         5         6         7         8         9
 # 01234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -165,7 +225,7 @@ def SMART_DATA_Slices(string):
         yield i,j
         i = j+1
 
-SMART_DATA_SLICES = [ij for ij in SMART_DATA_Slices(pattern_for_slicing_SMART_DATA)]
+SMART_DATA_SLICES = [ij for ij in SMART_DATA_Slices(PATTERN_for_SLICING_SMART_DATA)]
 
 def SMART_DATA_Headers_and_Values(line):
     for col_name,ij in zip(SMART_DATA_HEADERS, SMART_DATA_SLICES):
@@ -198,7 +258,7 @@ def parse_START_OF_READ_SMART_DATA_SECTION(fp, smart_data):
         # splitted_line = re.split(' +', line)
         # print(splitted_line)
 
-        # for i,j in SMART_DATA_Slices(pattern_for_slicing_SMART_DATA):
+        # for i,j in SMART_DATA_Slices(PATTERN_for_SLICING_SMART_DATA):
         #     # print(i,j)
         #     # print('<' + line[i:j] + '>', end=' ')
         for col_name, value in SMART_DATA_Headers_and_Values(line):
@@ -206,10 +266,10 @@ def parse_START_OF_READ_SMART_DATA_SECTION(fp, smart_data):
             # print(value, end=' ')
 
             #============================================================
-            create_list(smart_data, 'all columns')
-
-            if col_name not in smart_data['all columns']:
-                smart_data['all columns'].append(col_name)
+            # create_list(smart_data, 'all columns')
+            #
+            # if col_name not in smart_data['all columns']:
+            #     smart_data['all columns'].append(col_name)
             #============================================================
             if   col_name == 'ID#':
                 attribute_id = value
@@ -228,10 +288,10 @@ def parse_START_OF_READ_SMART_DATA_SECTION(fp, smart_data):
 
                 smart_data[col_name][attribute_id].append(int(value))
                 #========================================================
-                create_list(smart_data, 'picked columns')
-
-                if col_name not in smart_data['picked columns']:
-                    smart_data['picked columns'].append(col_name)
+                # create_list(smart_data, 'picked columns')
+                #
+                # if col_name not in smart_data['picked columns']:
+                #     smart_data['picked columns'].append(col_name)
             #============================================================
         # print()
 
@@ -240,15 +300,19 @@ def plot_VALUE_WORST_THRESH_data(ax, date_data, smart_data, attribute_id):
     worst_data  = smart_data['WORST'    ][attribute_id]
     thresh_data = smart_data['THRESH'   ][attribute_id]
 
-    ax.set_ylim(0, 210)
+    ax.set_ylim(-10, 210)
     ax.grid()
 
     attribute_name = smart_data['ATTRIBUTE_NAME'][attribute_id]
     attribute_type = smart_data['TYPE'          ][attribute_id]
 
-    plot_title = f'ID# {attribute_id}: {attribute_name} ({attribute_type})'
+    plot_title = f'ID#{attribute_id}: {attribute_name} ({attribute_type})'
 
     ax.set_title(plot_title)
+
+    # set x-axis label and adjust its position
+    ax.set_xlabel('days before')
+    ax.xaxis.set_label_coords(1.05, -0.06)
 
     # blue, green, red, cyan, magenta, yellow, black, and white
     l1, = ax.plot(date_data, value_data, label='VALUE' , color='blue' , linestyle='solid')
@@ -262,8 +326,8 @@ def plot_VALUE_WORST_THRESH_data(ax, date_data, smart_data, attribute_id):
     return l1,l2,l3,l4
 
 def days_between(d1, d2):
-    d1 = datetime.strptime(d1, "%Y-%m-%d_%H:%M")
-    d2 = datetime.strptime(d2, "%Y-%m-%d_%H:%M")
+    d1 = datetime.strptime(d1, DATE_FORMAT)
+    d2 = datetime.strptime(d2, DATE_FORMAT)
 
     delta_seconds = (d2-d1).days*24*3600 + (d2 - d1).seconds
     delta_days = round(delta_seconds / (24*3600), 2)
@@ -273,14 +337,17 @@ def days_between(d1, d2):
 def plot_SMART_DATA(smart_infos, disk_SN):
     smart_data = smart_infos[disk_SN]
 
-    start_date = smart_data['date'][0]
-    print(start_date)
+    oldest_date = smart_data['date'][ 0]
+    latest_date = smart_data['date'][-1]
+    print('oldest_date: ', oldest_date)
+    print('latest_date: ', latest_date)
     day_axis = []
     for current_date in smart_data['date']:
-        delta_days = days_between(start_date, current_date)
+        # delta_days = days_between(oldest_date, current_date)
+        delta_days = days_between(latest_date, current_date)
         day_axis.append(delta_days)
 
-    print(day_axis)
+    # print(day_axis)
 
     nb_attributes = len(smart_data['ATTRIBUTE_NAME'])
 
@@ -294,7 +361,11 @@ def plot_SMART_DATA(smart_infos, disk_SN):
     Device_Model = smart_data['Device Model']
 
     disk_SN = ''.join(random.sample(disk_SN,len(disk_SN)))
-    fig_title = f'Model Family: {Model_Family}, Device Model: {Device_Model}, Serial Number: {disk_SN}'
+    fig_disk_model   = f'Model Family: {Model_Family}, Device Model: {Device_Model}'
+    fig_disk_SN      = f'Serial Number: {disk_SN}'
+    fig_latest_check = f'Latest check: {latest_date}'
+    # fig_title = f'Model Family: {Model_Family}, Device Model: {Device_Model}, Serial Number: {disk_SN}'
+    fig_title = f'{fig_disk_model}, {fig_disk_SN} - {fig_latest_check}'
     fig.suptitle(fig_title)
 
     # Data for plotting
@@ -311,13 +382,27 @@ def plot_SMART_DATA(smart_infos, disk_SN):
         if (row,col == 0,0):
             fig.legend(ls, ('VALUE', 'WORST', 'THRESH', 'RAW_VALUE'), loc='upper left')
 
-    fig.savefig(disk_SN + '.png', bbox_inches='tight', dpi=100)
+    if __status__ == 'Production':
+        fig_filename = latest_date + '_' + disk_SN   + '.png'
+    else:
+        fig_filename = latest_date + '_' + 'example' + '.png'
+
+    fig.savefig(fig_filename, bbox_inches='tight', dpi=100)
     # plt.tight_layout()
     plt.show()
 
 def plot_SMART_INFOS(smart_infos):
+    print()
+
     for disk_SN in smart_infos:
-        print(disk_SN)
+        Model_Family = smart_infos[disk_SN]['Model Family']
+        Device_Model = smart_infos[disk_SN]['Device Model']
+        
+        print('Model Family : ', Model_Family)
+        print('Device Model : ', Device_Model)
+        print('Serial Number: ', disk_SN)
+        print()
+
         plot_SMART_DATA(smart_infos, disk_SN)
 
 def main():
